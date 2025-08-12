@@ -26,6 +26,7 @@ func alert_webhook(w http.ResponseWriter, r *http.Request) {
 
 	mode := [7]int{0, 0, 0, 0, 1, 0, 0}
 	duration := 10 * time.Second
+	buzzSpecified := false
 
 	if len(req.Alerts) > 0 {
 		alert := req.Alerts[0]
@@ -35,17 +36,29 @@ func alert_webhook(w http.ResponseWriter, r *http.Request) {
 		// Set blinking and buzzer mode
 		switch severity {
 		case "critical":
-			mode = [7]int{0, 1, 0, 0, 0, 0, 0} // red
+			mode = [7]int{0, 1, 0, 0, 0, 0, 0} // Red blink
 		case "warning":
-			mode = [7]int{1, 0, 0, 0, 0, 0, 0} // yellow
+			mode = [7]int{1, 0, 0, 0, 0, 0, 0} // Yellow blink
 		}
 
 		// Buzzer
 		switch beepMode {
 		case "long":
-			mode[2] = 1 // buzz long
+			mode[2] = 1 // Beep 1s
+			buzzSpecified = true
 		case "short":
-			mode[3] = 1 // buzz short
+			mode[3] = 1 // Beep short
+			buzzSpecified = true
+		}
+
+		if buzzStr, ok := alert.Labels["buzztime"]; ok {
+			var buzzSec int
+			_, err := fmt.Sscanf(buzzStr, "%d", &buzzSec)
+			if err == nil && buzzSec > 0 {
+				duration = time.Duration(buzzSec) * time.Second
+			}
+		} else if buzzSpecified {
+			duration = 10 * time.Second
 		}
 	}
 
